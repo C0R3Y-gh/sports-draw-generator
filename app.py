@@ -48,29 +48,29 @@ if grading_file and court_file and rules_file:
         st.dataframe(rules_df.head())
 
     if st.button("Generate Draw"):
-output = generate_draw(
-    grading_df=grading_df,
-    court_df=court_df,
-    rules_df=rules_df
-)
+        output = generate_draw(
+            grading_df=grading_df,
+            court_df=court_df,
+            rules_df=rules_df
+        )
 
-st.subheader("Validation")
-st.dataframe(output["Validation"])
+        st.subheader("Validation")
+        st.dataframe(output["Validation"])
 
-st.subheader("Fixtures")
-st.dataframe(output["Fixtures"])
+        st.subheader("Fixtures")
+        st.dataframe(output["Fixtures"])
 
-st.subheader("Team Position Map")
-st.dataframe(output["Team_Position_Map"])
+        st.subheader("Team Position Map")
+        st.dataframe(output["Team_Position_Map"])
 
-excel_bytes = output_to_excel_bytes(output)
+        excel_bytes = output_to_excel_bytes(output)
 
-st.download_button(
-    label="Download Full Output Excel",
-    data=excel_bytes,
-    file_name="tennis_draw_output.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+        st.download_button(
+            label="Download Full Output Excel",
+            data=excel_bytes,
+            file_name="tennis_draw_output.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
 else:
     st.warning("Please upload all three Excel files.")
