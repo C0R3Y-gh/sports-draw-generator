@@ -151,6 +151,57 @@ def generate_section_fixtures(format_name, section_name, section_df):
     return fixtures + mirrored_fixtures
 
 
+def add_courts_required(fixtures_df, rules_df):
+    rules_lookup = rules_df[["Format", "Courts_Required"]].drop_duplicates()
+
+    fixtures_df = fixtures_df.merge(
+        rules_lookup,
+        on="Format",
+        how="left"
+    )
+
+    return fixtures_df
+
+
+def build_club_round_court_usage(fixtures_df):
+    usage_df = (
+        fixtures_df
+        .groupby(["Home_Club", "Round"], as_index=False)["Courts_Required"]
+        .sum()
+        .rename(columns={
+            "Home_Club": "Club_Name",
+            "Courts_Required": "Courts_Used"
+        })
+    )
+
+    return usage_df
+
+
+def build_court_availability_check(usage_df, court_df):
+    availability_df = court_df[["Club_Name", "Total_Courts_Available"]].drop_duplicates()
+
+    check_df = usage_df.merge(
+        availability_df,
+        on="Club_Name",
+        how="left"
+    )
+
+    check_df["Court_Balance"] = (
+        check_df["Total_Courts_Available"] - check_df["Courts_Used"]
+    )
+
+    check_df["Status"] = check_df["Court_Balance"].apply(
+        lambda x: "PASS" if x >= 0 else "FAIL"
+    )
+
+    check_df = check_df.sort_values(
+        ["Status", "Round", "Club_Name"],
+        ascending=[True, True, True]
+    ).reset_index(drop=True)
+
+    return check_df
+
+
 def generate_draw(grading_df, court_df, rules_df):
     validation_df = validate_inputs(grading_df, court_df, rules_df)
 
@@ -159,6 +210,8 @@ def generate_draw(grading_df, court_df, rules_df):
             "Validation": validation_df,
             "Fixtures": pd.DataFrame(),
             "Team_Position_Map": pd.DataFrame(),
+            "Club_Round_Court_Usage": pd.DataFrame(),
+            "Court_Availability_Check": pd.DataFrame(),
         }
 
     all_fixtures = []
@@ -195,14 +248,25 @@ def generate_draw(grading_df, court_df, rules_df):
         (fixtures_df["Away_Team"] != "BYE")
     ]
 
+    fixtures_df = add_courts_required(fixtures_df, rules_df)
+
     fixtures_df = fixtures_df.sort_values(
         ["Format", "Section", "Round", "Home_Team"]
     ).reset_index(drop=True)
 
     position_map_df = pd.DataFrame(all_position_maps)
 
+    usage_df = build_club_round_court_usage(fixtures_df)
+
+    availability_check_df = build_court_availability_check(
+        usage_df=usage_df,
+        court_df=court_df
+    )
+
     return {
         "Validation": validation_df,
         "Fixtures": fixtures_df,
         "Team_Position_Map": position_map_df,
+        "Club_Round_Court_Usage": usage_df,
+        "Court_Availability_Check": availability_check_df,
     }
