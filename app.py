@@ -30,6 +30,14 @@ def output_to_excel_bytes(output):
     return excel_file.getvalue()
 
 
+def has_failures(df):
+    return (
+        isinstance(df, pd.DataFrame)
+        and "Status" in df.columns
+        and (df["Status"] == "FAIL").any()
+    )
+
+
 if grading_file and court_file and rules_file:
     grading_df = pd.read_excel(grading_file)
     court_df = pd.read_excel(court_file)
@@ -54,14 +62,20 @@ if grading_file and court_file and rules_file:
             rules_df=rules_df
         )
 
-        st.subheader("Validation")
-        st.dataframe(output["Validation"])
+        if has_failures(output.get("Validation")):
+            st.error("Validation failed. Please fix the input files.")
+        elif has_failures(output.get("Court_Availability_Check")):
+            st.warning("Draw generated, but some clubs exceed court availability.")
+        else:
+            st.success("Draw generated successfully. No court availability issues detected.")
 
-        st.subheader("Fixtures")
-        st.dataframe(output["Fixtures"])
+        for sheet_name, df in output.items():
+            st.subheader(sheet_name.replace("_", " "))
 
-        st.subheader("Team Position Map")
-        st.dataframe(output["Team_Position_Map"])
+            if df.empty:
+                st.info("No rows to display.")
+            else:
+                st.dataframe(df, use_container_width=True)
 
         excel_bytes = output_to_excel_bytes(output)
 
